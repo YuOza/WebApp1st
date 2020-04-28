@@ -6,8 +6,9 @@
     </div>
     <!-- ログイン中に表示される画面 -->
     <div v-else>
-      {{ user.email }}でログイン中です<br>
-      <a href="/member-page">メンバーページへ</a>
+      {{ this.$store.state.user.email }}でログイン中です<br>
+      カウンター {{ $store.state.test_count }}
+      <v-btn v-on:click="count_up">数字を増やす</v-btn>
       <v-btn v-on:click="googleLogOut">ログアウト</v-btn><br>
     </div>
   </div>
@@ -23,46 +24,35 @@ export default {
      isLogin: false,
    };
  },
- computed: {
-    ...mapState(['user']),
-  },
+//  computed: {
+    // ...mapState(['user']),
+  // },
  //ここにログイン状態が変わったときの処理を書く(状態遷移)
  mounted() {
     firebase.auth().onAuthStateChanged((user) => {
       if (user) {
         this.isLogin = true
-        // this.user = user
-        this.setUser(user)
-        // this.$router.push("/test")
+        // this.setUser(user)
+        this.$store.dispatch('setUser', user)
       } else {
         this.isLogin = false
-        // this.user = null
-        this.setUser(null)
+        // this.setUser(null)
+        this.$store.dispatch('setUser', null)
       }
     })
  },
  methods: {
-   ...mapActions(['setUser']),
+  //  ...mapActions(['setUser']),
    googleLogin() {
      const provider = new firebase.auth.GoogleAuthProvider();
      firebase.auth().signInWithRedirect(provider)
-    //  this.isLogin = true
-    //  this.setUser(user)
-     //.then(user => {
-     this.$router.push("/test")
-     //}).catch((error) => {
-     //  alert(error)
-     //});
+    //  this.$router.push("/test")
    },
    googleLogOut() {
      firebase.auth().signOut()
-    //  this.isLogin = false
-    //  this.setUser(null)
-     //.then(() => {
-
-     //}).catch((error) => {
-     //  alert(error)
-     //})
+   },
+   count_up(){
+     this.$store.dispatch('count_up')
    }
  }
 };

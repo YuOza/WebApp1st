@@ -4,8 +4,17 @@
     <h1 class="title">お金の出入り記録</h1>
     <v-form ref="test_form">
     <v-date-picker  
-        v-model="selectDay">
+        v-model="selectDay"
+        :rules="[required]"
+        >
     </v-date-picker>
+    <v-text-field
+        v-model="selectDay"
+        disabled="true"
+        :rules="[required]"
+        >
+    </v-text-field>
+    <!-- <datepicker></datepicker> -->
     <v-radio-group
         v-model="pm"
         :rules="[required]"
@@ -40,7 +49,7 @@
     ></v-text-field>
     </v-form>
     <v-btn text v-on:click="addItem">追加</v-btn>
-
+    <v-btn text v-on:click="getTodo">更新</v-btn>
     <h2 class="subtitle">出入りリスト</h2>
     <table border="1">
         <tr>
@@ -66,8 +75,12 @@
 <script>
 import firebase from '~/plugins/firebase'
 import { db } from '~/plugins/firebase'
+// import Datepicker from 'vuejs-datepicker'
   export default {
     name: "",
+    // components: {
+    //     Datepicker
+    // },
     data: function () {
       return{
       selectDay: '',
@@ -90,25 +103,69 @@ import { db } from '~/plugins/firebase'
             this.selectTag = ''
         }
     },
+    created(){
+        const querySnapshot = db.collection('users').doc(this.$store.state.user.email).collection("count-list")
+            querySnapshot.get().then(snapshot => {
+                snapshot.forEach(doc => {
+                // console.log(doc.id, '=>', doc.data());
+                var todo = {
+                    day: doc.data().day,
+                    item: doc.data().item,
+                    tag: doc.data().tag,
+                    memo: doc.data().memo,
+                    id: doc.id
+                }
+                this.todos.push(todo)
+                });
+            })
+            .catch(err => {
+                console.log('Error getting documents', err);
+            });
+    },
     methods: {
+        // getTodo: function(){
+        //     this.todos = []
+        //     const querySnapshot = db.collection('users').doc(this.$store.state.user.email).collection("count-list")
+        //     querySnapshot.get().then(snapshot => {
+        //         snapshot.forEach(doc => {
+        //         console.log(doc.id, '=>', doc.data());
+        //         var todo = {
+        //             day: doc.data().day,
+        //             item: doc.data().item,
+        //             tag: doc.data().tag,
+        //             memo: doc.data().memo,
+        //             id: doc.id
+        //         }
+        //         this.todos.push(todo)
+        //         });
+        //     })
+        //     .catch(err => {
+        //         console.log('Error getting documents', err);
+        //     });
+        // },
         addItem: function(event){
             if(this.$refs.test_form.validate()){
                 if(this.pm == "minus"){
                     this.amount = -this.amount
                  }
+                 if(String(this.memo) == "undefined"){
+                     this.memo = ""
+                 }
                 var todo = {
-                    day: String(this.selectDay),
+                    day: String(this.selectDay), //StringにしないとDBに入らない
                     item: this.amount,
                     tag: this.selectTag,
                     memo: this.memo
                 };
-                db.collection("users").doc(this.$store.state.user.email).collection("count-list").doc().set(todo)
+                var newTodo = db.collection("users").doc(this.$store.state.user.email).collection("count-list").doc()
+                newTodo.set(todo)
                 .then(function() {
                     console.log("Document successfully written!");
                 })
                 .catch(function(error) {
                     console.error("Error writing document: ", error);
                 });
+                todo.id = newTodo.id
                 this.todos.push(todo)
                 this.sum += Number(this.amount)
                 this.$refs.test_form.reset()
@@ -116,8 +173,13 @@ import { db } from '~/plugins/firebase'
         },
         deleteItem: function(index){
             if(confirm('Are you sure?')){ //確認をとる
-               this.sum -= Number(this.todos[index].item)
-               this.todos.splice(index, 1);
+                db.collection("users").doc(this.$store.state.user.email).collection("count-list").doc(this.todos[index].id).delete().then(function() {
+                    console.log("Document successfully deleted!");
+                }).catch(function(error) {
+                    console.error("Error removing document: ", error);
+                });
+                this.sum -= Number(this.todos[index].item)
+                this.todos.splice(index, 1);
             }
         },
         

@@ -3,18 +3,27 @@
   <v-app>
     <h1 class="title">お金の出入り記録</h1>
     <v-form ref="test_form">
-    <v-date-picker  
+    <client-only>
+      <date-picker
+        v-model="selectDay"
+        format="yyyy-MM-dd"
+        :value="defaultDate"
+        required="true"
+        >
+      </date-picker>
+    </client-only>
+    <!-- <v-date-picker  
         v-model="selectDay"
         :rules="[required]"
-        >
-    </v-date-picker>
-    <v-text-field
+        > -->
+    <!-- </v-date-picker> -->
+    <!-- <p>{{customformat(selectDay)}}</p> -->
+    <!-- <v-text-field
         v-model="selectDay"
         disabled="true"
         :rules="[required]"
         >
-    </v-text-field>
-    <!-- <datepicker></datepicker> -->
+    </v-text-field> -->
     <v-radio-group
         v-model="pm"
         :rules="[required]"
@@ -49,7 +58,7 @@
     ></v-text-field>
     </v-form>
     <v-btn text v-on:click="addItem">追加</v-btn>
-    <v-btn text v-on:click="getTodo">更新</v-btn>
+    <!-- <v-btn text v-on:click="getTodo">更新</v-btn> -->
     <h2 class="subtitle">出入りリスト</h2>
     <table border="1">
         <tr>
@@ -67,6 +76,11 @@
             <td><v-btn text v-on:click="deleteItem(index)">削除</v-btn></td>
         </tr>
     </table>
+    <v-date-picker  
+        v-model="nowselectDay"
+        >
+    </v-date-picker>
+    <p>日付   : {{  }}</p>
     <p>所持金 : {{ sum }}</p>
   </v-app>
   </div>
@@ -75,7 +89,9 @@
 <script>
 import firebase from '~/plugins/firebase'
 import { db } from '~/plugins/firebase'
-// import Datepicker from 'vuejs-datepicker'
+import moment from 'moment'
+
+
   export default {
     name: "",
     // components: {
@@ -94,8 +110,15 @@ import { db } from '~/plugins/firebase'
       required: value => !!value || "入力必須",
       limit_length: value => value.length <= 10 || "10文字以内" ,
       plus_only: value => value > 0 ||"正の数のみ",
-      sum: 0
+      sum: 0,
+      nowSelectDay: "",
+      defaultDate: ""
       }
+    },
+    computed: {
+        lookedDay() {
+            return String(this.nowSelectDay)
+        }
     },
     watch: {
         // 支出と収入を切り替えたらタグをリセット
@@ -104,10 +127,34 @@ import { db } from '~/plugins/firebase'
         }
     },
     created(){
-        const querySnapshot = db.collection('users').doc(this.$store.state.user.email).collection("count-list")
+        // var now = new Date();
+        // var month = now.getMonth()+1
+        // var day = now.getDate()
+        // if (month < 10)
+        //     month = String("0" + month)
+        // if (day < 10)
+        //     day = String("0" + day )
+        // var s = now.getFullYear() + "-" + month + "-" + day
+        this.defaultDate = moment().toDate()
+        // this.nowSelectDay = 
+
+        const mydoc = db.collection('users').doc(this.$store.state.user.email)
+        const getDoc = mydoc.get()
+        .then(doc => {
+            if (!doc.exists) {
+                console.log('No such document!');
+            } else {
+                // console.log('Document data:', doc.data());
+                this.sum = doc.data().sum
+                // console.log(this.sum)
+            }
+        })
+        .catch(err => {
+            console.log('Error getting document', err);
+        });
+        const querySnapshot = mydoc.collection("count-list").orderBy("day")
             querySnapshot.get().then(snapshot => {
                 snapshot.forEach(doc => {
-                // console.log(doc.id, '=>', doc.data());
                 var todo = {
                     day: doc.data().day,
                     item: doc.data().item,
@@ -123,36 +170,25 @@ import { db } from '~/plugins/firebase'
             });
     },
     methods: {
-        // getTodo: function(){
-        //     this.todos = []
-        //     const querySnapshot = db.collection('users').doc(this.$store.state.user.email).collection("count-list")
-        //     querySnapshot.get().then(snapshot => {
-        //         snapshot.forEach(doc => {
-        //         console.log(doc.id, '=>', doc.data());
-        //         var todo = {
-        //             day: doc.data().day,
-        //             item: doc.data().item,
-        //             tag: doc.data().tag,
-        //             memo: doc.data().memo,
-        //             id: doc.id
-        //         }
-        //         this.todos.push(todo)
-        //         });
-        //     })
-        //     .catch(err => {
-        //         console.log('Error getting documents', err);
-        //     });
-        // },
+        customformat: function(value){
+            // const moment = require('moment');
+            return moment(value).format('YYYY-MM-DD');
+        },
+        NowselectDay: function(){
+            
+            return s
+        },
         addItem: function(event){
             if(this.$refs.test_form.validate()){
                 if(this.pm == "minus"){
                     this.amount = -this.amount
-                 }
-                 if(String(this.memo) == "undefined"){
+                }
+                if(String(this.memo) == "undefined"){
                      this.memo = ""
-                 }
+                }
                 var todo = {
-                    day: String(this.selectDay), //StringにしないとDBに入らない
+                    // day: String(this.selectDay), //StringにしないとDBに入らない
+                    day: this.customformat(this.selectDay),
                     item: this.amount,
                     tag: this.selectTag,
                     memo: this.memo
@@ -167,6 +203,17 @@ import { db } from '~/plugins/firebase'
                 });
                 todo.id = newTodo.id
                 this.todos.push(todo)
+
+                this.todos.sort(function(a, b) {
+                if (a.day > b.day) {
+                    return 1;
+                } else {
+                    return -1;
+                }
+                })
+                db.collection("users").doc(this.$store.state.user.email).update({
+                    "sum": this.sum + Number(this.amount),
+                })
                 this.sum += Number(this.amount)
                 this.$refs.test_form.reset()
             }

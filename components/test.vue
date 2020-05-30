@@ -7,23 +7,10 @@
       <date-picker
         v-model="selectDay"
         format="yyyy-MM-dd"
-        :value="defaultDate"
         required="true"
         >
       </date-picker>
     </client-only>
-    <!-- <v-date-picker  
-        v-model="selectDay"
-        :rules="[required]"
-        > -->
-    <!-- </v-date-picker> -->
-    <!-- <p>{{customformat(selectDay)}}</p> -->
-    <!-- <v-text-field
-        v-model="selectDay"
-        disabled="true"
-        :rules="[required]"
-        >
-    </v-text-field> -->
     <v-radio-group
         v-model="pm"
         :rules="[required]"
@@ -58,7 +45,6 @@
     ></v-text-field>
     </v-form>
     <v-btn text v-on:click="addItem">追加</v-btn>
-    <!-- <v-btn text v-on:click="getTodo">更新</v-btn> -->
     <h2 class="subtitle">出入りリスト</h2>
     <table border="1">
         <tr>
@@ -76,11 +62,14 @@
             <td><v-btn text v-on:click="deleteItem(index)">削除</v-btn></td>
         </tr>
     </table>
-    <v-date-picker  
-        v-model="nowselectDay"
+    <client-only>
+      <date-picker
+        v-model="nowSelectDay"
+        format="yyyy-MM-dd"
+        @selected="UpdateSum"
         >
-    </v-date-picker>
-    <p>日付   : {{  }}</p>
+      </date-picker>
+    </client-only>
     <p>所持金 : {{ sum }}</p>
   </v-app>
   </div>
@@ -91,12 +80,8 @@ import firebase from '~/plugins/firebase'
 import { db } from '~/plugins/firebase'
 import moment from 'moment'
 
-
   export default {
     name: "",
-    // components: {
-    //     Datepicker
-    // },
     data: function () {
       return{
       selectDay: '',
@@ -127,42 +112,37 @@ import moment from 'moment'
         }
     },
     created(){
-        // var now = new Date();
-        // var month = now.getMonth()+1
-        // var day = now.getDate()
-        // if (month < 10)
-        //     month = String("0" + month)
-        // if (day < 10)
-        //     day = String("0" + day )
-        // var s = now.getFullYear() + "-" + month + "-" + day
-        this.defaultDate = moment().toDate()
-        // this.nowSelectDay = 
-
+        this.selectDay = new Date()
+        this.nowSelectDay = this.selectDay
+        const fnsDay = moment(this.nowSelectDay).format('YYYY-MM-DD')
         const mydoc = db.collection('users').doc(this.$store.state.user.email)
-        const getDoc = mydoc.get()
-        .then(doc => {
-            if (!doc.exists) {
-                console.log('No such document!');
-            } else {
-                // console.log('Document data:', doc.data());
-                this.sum = doc.data().sum
-                // console.log(this.sum)
-            }
-        })
-        .catch(err => {
-            console.log('Error getting document', err);
-        });
+        // const getDoc = mydoc.get()
+        // .then(doc => {
+        //     if (!doc.exists) {
+        //         console.log('No such document!');
+        //     } else {
+        //         // console.log('Document data:', doc.data());
+        //         this.sum = doc.data().sum
+        //         // console.log(this.sum)
+        //     }
+        // })
+        // .catch(err => {
+        //     console.log('Error getting document', err);
+        // });
         const querySnapshot = mydoc.collection("count-list").orderBy("day")
             querySnapshot.get().then(snapshot => {
                 snapshot.forEach(doc => {
-                var todo = {
-                    day: doc.data().day,
-                    item: doc.data().item,
-                    tag: doc.data().tag,
-                    memo: doc.data().memo,
-                    id: doc.id
-                }
-                this.todos.push(todo)
+                    var todo = {
+                        day: doc.data().day,
+                        item: doc.data().item,
+                        tag: doc.data().tag,
+                        memo: doc.data().memo,
+                        id: doc.id
+                    }
+                    this.todos.push(todo)
+                    if (todo.day <= fnsDay){
+                        this.sum += todo.item
+                    }
                 });
             })
             .catch(err => {
@@ -171,12 +151,7 @@ import moment from 'moment'
     },
     methods: {
         customformat: function(value){
-            // const moment = require('moment');
             return moment(value).format('YYYY-MM-DD');
-        },
-        NowselectDay: function(){
-            
-            return s
         },
         addItem: function(event){
             if(this.$refs.test_form.validate()){
@@ -187,7 +162,6 @@ import moment from 'moment'
                      this.memo = ""
                 }
                 var todo = {
-                    // day: String(this.selectDay), //StringにしないとDBに入らない
                     day: this.customformat(this.selectDay),
                     item: this.amount,
                     tag: this.selectTag,
@@ -211,10 +185,11 @@ import moment from 'moment'
                     return -1;
                 }
                 })
-                db.collection("users").doc(this.$store.state.user.email).update({
-                    "sum": this.sum + Number(this.amount),
-                })
-                this.sum += Number(this.amount)
+                // db.collection("users").doc(this.$store.state.user.email).update({
+                //     "sum": this.sum + Number(this.amount),
+                // })
+                // this.sum += Number(this.amount)
+                this.UpdateSum(this.nowSelectDay)
                 this.$refs.test_form.reset()
             }
         },
@@ -225,11 +200,22 @@ import moment from 'moment'
                 }).catch(function(error) {
                     console.error("Error removing document: ", error);
                 });
-                this.sum -= Number(this.todos[index].item)
+                // this.sum -= Number(this.todos[index].item)
                 this.todos.splice(index, 1);
+                this.UpdateSum(this.nowSelectDay)
             }
         },
-        
+        UpdateSum: function(Date){
+            const setDay = this.customformat(Date)
+            var nowsum = 0
+            const nowTodos = this.todos
+            const length = nowTodos.length
+            for(let i = 0; (i < length) && (nowTodos[i].day <= setDay); i++){
+                console.log(nowTodos[i])
+                nowsum += nowTodos[i].item
+            }
+            this.sum = nowsum
+        }
     }
   }
 </script>

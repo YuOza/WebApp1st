@@ -6,11 +6,12 @@
     </div>
     <!-- ログイン中に表示される画面 -->
     <div v-else>
+      
+      {{ this.$store.state.user.email }}でログイン中です<br>
+      <!-- カウンター {{ $store.state.test_count }}
+      <v-btn v-on:click="count_up">数字を増やす</v-btn>-->
+      <v-btn v-on:click="googleLogOut">ログアウト</v-btn><br>
       <MC></MC>
-      <!-- {{ this.$store.state.user.email }}でログイン中です<br>
-      カウンター {{ $store.state.test_count }}
-      <v-btn v-on:click="count_up">数字を増やす</v-btn>
-      <v-btn v-on:click="googleLogOut">ログアウト</v-btn><br> -->
     </div>
   </div>
 </template>

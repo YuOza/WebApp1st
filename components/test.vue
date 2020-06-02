@@ -1,6 +1,7 @@
 <template>
   <div>
   <v-app>
+    ver:1.4
     <h1 class="title">お金の出入り記録</h1>
     <v-form ref="test_form">
     <client-only>
@@ -44,9 +45,10 @@
         label="備考"
     ></v-text-field>
     </v-form>
-    <v-btn text v-on:click="addItem">追加</v-btn>
+    <v-btn text v-on:click="addItem" color="primary">追加</v-btn>
     <h2 class="subtitle">出入りリスト</h2>
     <table border="1">
+        <thead>
         <tr>
             <th>日付</th>
             <th>金額</th>
@@ -54,6 +56,8 @@
             <th>メモ</th>
             <th>　　</th>
         </tr>
+        </thead>
+        <tbody>
         <tr v-for="(todo, index) in todos" :key="todo.id">
             <td>{{ todo.day }}</td>
             <td>{{ todo.item }}</td>
@@ -61,6 +65,7 @@
             <td>{{ todo.memo }}</td>
             <td><v-btn text v-on:click="deleteItem(index)">削除</v-btn></td>
         </tr>
+        </tbody>
     </table>
     <client-only>
       <date-picker

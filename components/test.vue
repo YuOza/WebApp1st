@@ -2,6 +2,11 @@
   <div>
   <v-app>
     ver:1.4
+    <Chart 
+        :chart-data="datacollection"
+        :options="ChartOptions"
+        ></Chart>
+    <v-btn text v-on:click="fillData" color="primary">更新</v-btn>
     <h1 class="title">お金の出入り記録</h1>
     <v-form ref="test_form">
     <client-only>
@@ -84,11 +89,17 @@
 import firebase from '~/plugins/firebase'
 import { db } from '~/plugins/firebase'
 import moment from 'moment'
+import Chart from '~/components/ChartSample.js';
 
   export default {
+    components: {
+        Chart
+    },
     name: "",
     data: function () {
       return{
+      datacollection: null,
+      ChartOptions: null,
       selectDay: '',
       pm: true,
       amount: '',
@@ -105,10 +116,10 @@ import moment from 'moment'
       defaultDate: ""
       }
     },
-    computed: {
-        lookedDay() {
-            return String(this.nowSelectDay)
-        }
+    mounted () {
+        // this.$nextTick(function() {
+        //     this.fillData()
+        // })
     },
     watch: {
         // 支出と収入を切り替えたらタグをリセット
@@ -121,19 +132,6 @@ import moment from 'moment'
         this.nowSelectDay = this.selectDay
         const fnsDay = moment(this.nowSelectDay).format('YYYY-MM-DD')
         const mydoc = db.collection('users').doc(this.$store.state.user.email)
-        // const getDoc = mydoc.get()
-        // .then(doc => {
-        //     if (!doc.exists) {
-        //         console.log('No such document!');
-        //     } else {
-        //         // console.log('Document data:', doc.data());
-        //         this.sum = doc.data().sum
-        //         // console.log(this.sum)
-        //     }
-        // })
-        // .catch(err => {
-        //     console.log('Error getting document', err);
-        // });
         const querySnapshot = mydoc.collection("count-list").orderBy("day")
             querySnapshot.get().then(snapshot => {
                 snapshot.forEach(doc => {
@@ -149,10 +147,12 @@ import moment from 'moment'
                         this.sum += todo.item
                     }
                 });
+                this.fillData()
             })
             .catch(err => {
                 console.log('Error getting documents', err);
             });
+            // JSON.stringify()
     },
     methods: {
         customformat: function(value){
@@ -190,10 +190,6 @@ import moment from 'moment'
                     return -1;
                 }
                 })
-                // db.collection("users").doc(this.$store.state.user.email).update({
-                //     "sum": this.sum + Number(this.amount),
-                // })
-                // this.sum += Number(this.amount)
                 this.UpdateSum(this.nowSelectDay)
                 this.$refs.test_form.reset()
             }
@@ -205,7 +201,6 @@ import moment from 'moment'
                 }).catch(function(error) {
                     console.error("Error removing document: ", error);
                 });
-                // this.sum -= Number(this.todos[index].item)
                 this.todos.splice(index, 1);
                 this.UpdateSum(this.nowSelectDay)
             }
@@ -216,13 +211,57 @@ import moment from 'moment'
             const nowTodos = this.todos
             const length = nowTodos.length
             for(let i = 0; (i < length) && (nowTodos[i].day <= setDay); i++){
-                console.log(nowTodos[i])
                 nowsum += nowTodos[i].item
             }
             this.sum = nowsum
+        },
+        fillData: function(){
+            var dates = [] 
+            var money = []
+            var atsum = 0
+            const nowTodos = this.todos
+            const tolength = nowTodos.length
+
+            for(let i = 0; i < tolength; i++){
+                atsum += nowTodos[i].item
+                money.push(atsum)
+                const day = new Date(String(nowTodos[i].day))
+                dates.push(day)
+            }
+            this.datacollection = {
+                labels: dates,
+                datasets: [
+                    {
+                        label: 'line Dataset',
+                        data: money,
+                        lineTension: 0,
+                    }     
+                ]
+            },
+            this.ChartOptions = {
+                scales: {
+                xAxes: [{
+                    type: 'time', // specify time series type
+                    time: {
+                        unit: 'day'
+                    },
+                    distribution: 'linear', // use 'linear'(default) or 'series'
+                    scaleLabel: {
+                        display: true,
+                        labelString: 'day'
+                    }
+                }],
+                yAxes: [{
+                    ticks: {
+                    beginAtZero: true,
+                    stepSize: 100,
+                    }
+                }]
+                }
+            }
         }
     }
-  }
+    }
 </script>
  
 <style scoped>

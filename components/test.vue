@@ -2,11 +2,26 @@
   <div>
   <v-app>
     ver:1.4
-    <Chart 
-        :chart-data="datacollection"
-        :options="ChartOptions"
-        ></Chart>
-    <v-btn text v-on:click="fillData" color="primary">更新</v-btn>
+    <client-only>
+      <date-picker
+        v-model="ChartDay"
+        format="yyyy-MM-dd"
+        >
+      </date-picker>
+    </client-only>
+    <div v-if="nowChart=='Line'">
+        <Chart 
+            :chart-data="datacollection"
+            :options="ChartOptions"
+            ></Chart>
+    </div>
+    <div v-else-if="nowChart=='Pie'">
+        <PieChart
+            :chart-data="Piedatacollection"
+            :options="PieChartOptions">
+        </PieChart>
+    </div>
+    <v-btn text v-on:click="fillDataToPie" color="primary">円グラフ</v-btn>
     <h1 class="title">お金の出入り記録</h1>
     <v-form ref="test_form">
     <client-only>
@@ -89,17 +104,21 @@
 import firebase from '~/plugins/firebase'
 import { db } from '~/plugins/firebase'
 import moment from 'moment'
-import Chart from '~/components/ChartSample.js';
+import Chart from '~/components/ChartSample.js'
+import PieChart from '~/components/ChartPie.js'
 
   export default {
     components: {
-        Chart
+        Chart,
+        PieChart
     },
     name: "",
     data: function () {
       return{
       datacollection: null,
       ChartOptions: null,
+      Piedatacollection: null,
+      PieChartOptions: null,
       selectDay: '',
       pm: true,
       amount: '',
@@ -113,7 +132,9 @@ import Chart from '~/components/ChartSample.js';
       plus_only: value => value > 0 ||"正の数のみ",
       sum: 0,
       nowSelectDay: "",
-      defaultDate: ""
+      defaultDate: "",
+      nowChart: "Line",
+      ChartDay: ""
       }
     },
     mounted () {
@@ -130,6 +151,7 @@ import Chart from '~/components/ChartSample.js';
     created(){
         this.selectDay = new Date()
         this.nowSelectDay = this.selectDay
+        this.ChartDay = this.selectDay
         const fnsDay = moment(this.nowSelectDay).format('YYYY-MM-DD')
         const mydoc = db.collection('users').doc(this.$store.state.user.email)
         const querySnapshot = mydoc.collection("count-list").orderBy("day")
@@ -221,8 +243,7 @@ import Chart from '~/components/ChartSample.js';
             var atsum = 0
             const nowTodos = this.todos
             const tolength = nowTodos.length
-
-            for(let i = 0; i < tolength; i++){
+            for(let i = 0; (i < tolength); i++){
                 atsum += nowTodos[i].item
                 money.push(atsum)
                 const day = new Date(String(nowTodos[i].day))
@@ -259,6 +280,48 @@ import Chart from '~/components/ChartSample.js';
                 }]
                 }
             }
+        },
+        fillDataToPie: function(){
+            var tags = this.items
+            var money = Array(this.items.length)
+            money.fill(0)
+            const nowTodos = this.todos
+            const tolength = nowTodos.length
+            const setDay = this.ChartDay
+            for(let i = 0; (i < tolength) ; i++){
+                switch(nowTodos[i].tag){
+                    case tags[0]:
+                        money[0] += (nowTodos[i].item * (-1))
+                        break
+                    case tags[1]:
+                        money[1] += (nowTodos[i].item * (-1))
+                        break
+                    case tags[2]:
+                        money[2] += (nowTodos[i].item * (-1))
+                        break
+                    case tags[3]:
+                        money[3] += (nowTodos[i].item * (-1))
+                        break
+                }
+            }
+            this.Piedatacollection = {
+                labels: tags,
+                datasets: [
+                    {
+                        label: 'Pie',
+                        data: money,
+                        backgroundColor: [
+                            "rgb(255, 0, 0)",
+                            "rgb(170, 0, 0)",
+                            "rgb(90, 0, 0)",
+                            "rgb(20, 0, 0)"
+                        ]
+                    }     
+                ]
+            },
+            this.PieChartOptions = {
+            }
+            this.nowChart = 'Pie'
         }
     }
     }

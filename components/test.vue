@@ -2,26 +2,30 @@
   <div>
   <v-app>
     ver:1.4
-    <client-only>
-      <date-picker
-        v-model="ChartDay"
-        format="yyyy-MM-dd"
-        >
-      </date-picker>
-    </client-only>
     <div v-if="nowChart=='Line'">
         <Chart 
             :chart-data="datacollection"
             :options="ChartOptions"
-            ></Chart>
+        ></Chart>
     </div>
     <div v-else-if="nowChart=='Pie'">
+    グラフ計算日
+        <client-only>
+        <date-picker
+            v-model="ChartDay"
+            format="yyyy-MM-dd"
+            >
+        </date-picker>
+        </client-only>
         <PieChart
             :chart-data="Piedatacollection"
             :options="PieChartOptions">
         </PieChart>
     </div>
-    <v-btn text v-on:click="fillDataToPie" color="primary">円グラフ</v-btn>
+    <v-btn text v-on:click="changeChartToL" color="primary">推移グラフ</v-btn>
+    <v-btn text v-on:click="changeChartToM" color="primary">支出円グラフ</v-btn>
+    <v-btn text v-on:click="changeChartToP" color="primary">収入円グラフ</v-btn>
+    
     <h1 class="title">お金の出入り記録</h1>
     <v-form ref="test_form">
     <client-only>
@@ -67,7 +71,7 @@
     </v-form>
     <v-btn text v-on:click="addItem" color="primary">追加</v-btn>
     <h2 class="subtitle">出入りリスト</h2>
-    <table border="1">
+    <table border=1 rules=rows frame=hsides>
         <thead>
         <tr>
             <th>日付</th>
@@ -78,7 +82,7 @@
         </tr>
         </thead>
         <tbody>
-        <tr v-for="(todo, index) in todos" :key="todo.id">
+        <tr v-for="(todo, index) in todos" :key="todo.id" align="center">
             <td>{{ todo.day }}</td>
             <td>{{ todo.item }}</td>
             <td>{{ todo.tag }}</td>
@@ -87,6 +91,7 @@
         </tr>
         </tbody>
     </table>
+    所持金計算日
     <client-only>
       <date-picker
         v-model="nowSelectDay"
@@ -134,19 +139,15 @@ import PieChart from '~/components/ChartPie.js'
       nowSelectDay: "",
       defaultDate: "",
       nowChart: "Line",
-      ChartDay: ""
+      ChartDay: "",
+      ChartPM: false
       }
-    },
-    mounted () {
-        // this.$nextTick(function() {
-        //     this.fillData()
-        // })
     },
     watch: {
         // 支出と収入を切り替えたらタグをリセット
         pm : function(){
             this.selectTag = ''
-        }
+        },
     },
     created(){
         this.selectDay = new Date()
@@ -213,6 +214,8 @@ import PieChart from '~/components/ChartPie.js'
                 }
                 })
                 this.UpdateSum(this.nowSelectDay)
+                this.fillData()
+                this.fillDataToPie()
                 this.$refs.test_form.reset()
             }
         },
@@ -225,6 +228,8 @@ import PieChart from '~/components/ChartPie.js'
                 });
                 this.todos.splice(index, 1);
                 this.UpdateSum(this.nowSelectDay)
+                this.fillData()
+                this.fillDataToPie()
             }
         },
         UpdateSum: function(Date){
@@ -253,9 +258,10 @@ import PieChart from '~/components/ChartPie.js'
                 labels: dates,
                 datasets: [
                     {
-                        label: 'line Dataset',
+                        label: '所持金の推移',
                         data: money,
                         lineTension: 0,
+                        backgroundColor: "rgba(0, 0, 0, 0.5)"
                     }     
                 ]
             },
@@ -282,47 +288,116 @@ import PieChart from '~/components/ChartPie.js'
             }
         },
         fillDataToPie: function(){
-            var tags = this.items
-            var money = Array(this.items.length)
-            money.fill(0)
-            const nowTodos = this.todos
-            const tolength = nowTodos.length
-            const setDay = this.ChartDay
-            for(let i = 0; (i < tolength) ; i++){
-                switch(nowTodos[i].tag){
-                    case tags[0]:
-                        money[0] += (nowTodos[i].item * (-1))
-                        break
-                    case tags[1]:
-                        money[1] += (nowTodos[i].item * (-1))
-                        break
-                    case tags[2]:
-                        money[2] += (nowTodos[i].item * (-1))
-                        break
-                    case tags[3]:
-                        money[3] += (nowTodos[i].item * (-1))
-                        break
-                }
+            var info = new Array(3)
+            if (this.ChartPM){
+                info = this.PlusPie()
+            }else{
+                info = this.MinusPie()
             }
             this.Piedatacollection = {
-                labels: tags,
+                labels: info.tags,
                 datasets: [
                     {
                         label: 'Pie',
-                        data: money,
-                        backgroundColor: [
-                            "rgb(255, 0, 0)",
-                            "rgb(170, 0, 0)",
-                            "rgb(90, 0, 0)",
-                            "rgb(20, 0, 0)"
-                        ]
+                        data: info.money,
+                        backgroundColor: info.bgc
                     }     
                 ]
             },
             this.PieChartOptions = {
             }
-            this.nowChart = 'Pie'
-        }
+        },
+        PlusPie: function(){
+            var obj = new Object();
+            const tags = this.items2
+            const bgcp = [
+                "rgb(0, 0, 255)",
+                "rgb(0, 0, 200)",
+                "rgb(0, 0, 150)",
+                "rgb(0, 0, 100)",
+                "rgb(0, 0, 50)"
+            ] 
+            var money = Array(tags.length)
+            money.fill(0)
+            const nowTodos = this.todos
+            const tolength = nowTodos.length
+            const setDay = this.customformat(this.ChartDay)
+            for(let i = 0; (i < tolength) && (nowTodos[i].day <= setDay); i++){
+                switch(nowTodos[i].tag){
+                    case tags[0]:
+                        money[0] += (nowTodos[i].item)
+                        break
+                    case tags[1]:
+                        money[1] += (nowTodos[i].item)
+                        break
+                    case tags[2]:
+                        money[2] += (nowTodos[i].item)
+                        break
+                    case tags[3]:
+                        money[3] += (nowTodos[i].item)
+                        break
+                    case tags[4]:
+                        if (nowTodos[i].item > 0){
+                            money[4] += (nowTodos[i].item)
+                        }
+                        break
+                }
+            }
+            obj.tags = tags
+            obj.money = money
+            obj.bgc = bgcp
+            return obj
+        },
+        MinusPie: function(){
+            var obj = new Object();
+            const tags = this.items
+            const bgcp = [
+                "rgb(255, 0, 0)",
+                "rgb(200, 0, 0)",
+                "rgb(150, 0, 0)",
+                "rgb(100, 0, 0)"
+            ]
+            var money = Array(tags.length)
+            money.fill(0)
+            const nowTodos = this.todos
+            const tolength = nowTodos.length
+            const setDay = this.customformat(this.ChartDay)
+            for(let i = 0; (i < tolength)&& (nowTodos[i].day <= setDay) ; i++){
+                switch(nowTodos[i].tag){
+                    case tags[0]:
+                        money[0] += (nowTodos[i].item)*(-1)
+                        break
+                    case tags[1]:
+                        money[1] += (nowTodos[i].item)*(-1)
+                        break
+                    case tags[2]:
+                        money[2] += (nowTodos[i].item)*(-1)
+                        break
+                    case tags[3]:
+                        if (nowTodos[i].item < 0){
+                            money[3] += (nowTodos[i].item)*(-1)
+                        }
+                        break
+                }
+            }
+            obj.tags = tags
+            obj.money = money
+            obj.bgc = bgcp
+            return obj
+        },
+        changeChartToL: function(){
+            this.nowChart = 'Line'
+        },
+        changeChartToM: function(){
+            this.ChartPM = false
+            this.fillDataToPie()
+            this.nowChart='Pie'
+        },
+        changeChartToP: function(){
+            this.ChartPM = true
+            this.fillDataToPie()
+            this.nowChart='Pie'
+        },
     }
     }
 </script>
